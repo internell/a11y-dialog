@@ -22,7 +22,7 @@ var ESCAPE_KEY = 27;
  * @constructor
  * @param {Element} element
  */
-function A11yDialog(element) {
+function A11yDialog(element, options) {
   // Prebind the functions that will be bound in addEventListener and
   // removeEventListener to avoid losing references
   this._show = this.show.bind(this);
@@ -30,8 +30,11 @@ function A11yDialog(element) {
   this._maintainFocus = this._maintainFocus.bind(this);
   this._bindKeypress = this._bindKeypress.bind(this);
 
+  this.options = options || {};
+
   this.$el = element;
   this.shown = false;
+  this._focusContainer = this.options.focusContainer || this.$el;
   this._id = this.$el.getAttribute('data-a11y-dialog') || this.$el.id;
   this._previouslyFocused = null;
   this._listeners = {};
@@ -101,8 +104,8 @@ A11yDialog.prototype.show = function (event) {
   this.$el.removeAttribute('aria-hidden');
   this.shown = true;
 
-  // Set the focus to the dialog element
-  moveFocusToDialog(this.$el);
+  // Set the focus to the focus container
+  moveFocusToDialogContainer(this._focusContainer);
 
   // Bind a focus event listener to the body element to make sure the focus
   // stays trapped inside the dialog while open, and start listening for some
@@ -244,7 +247,7 @@ A11yDialog.prototype._fire = function (type, event) {
 A11yDialog.prototype._bindKeypress = function (event) {
   // This is an escape hatch in case there are nested dialogs, so the keypresses
   // are only reacted to for the most recent one
-  if (!this.$el.contains(document.activeElement)) return
+  if (!this._focusContainer.contains(document.activeElement)) return
 
   // If the dialog is shown and the ESCAPE key is being pressed, prevent any
   // further effects from the ESCAPE key and hide the dialog, unless its role
@@ -261,7 +264,7 @@ A11yDialog.prototype._bindKeypress = function (event) {
   // If the dialog is shown and the TAB key is being pressed, make sure the
   // focus stays trapped within the dialog element
   if (this.shown && event.which === TAB_KEY) {
-    trapTabKey(this.$el, event);
+    trapTabKey(this._focusContainer, event);
   }
 };
 
@@ -283,7 +286,7 @@ A11yDialog.prototype._maintainFocus = function (event) {
     !event.target.closest('[aria-modal="true"]') &&
     !event.target.closest('[data-a11y-dialog-ignore-focus-trap]')
   ) {
-    moveFocusToDialog(this.$el);
+    moveFocusToDialogContainer(this._focusContainer);
   }
 };
 
@@ -315,7 +318,7 @@ function $$(selector, context) {
  *
  * @param {Element} node
  */
-function moveFocusToDialog(node) {
+function moveFocusToDialogContainer(node) {
   var focused = node.querySelector('[autofocus]') || node;
 
   focused.focus();
